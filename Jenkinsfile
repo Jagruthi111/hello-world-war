@@ -41,17 +41,17 @@ pipeline {
         stage('Pull and Deploy') {
             parallel {
                 stage('Deploy to node1') {
-                    agent any
+                    agent { label 'slave1' }
                     steps {
                         sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
-                        sh "docker run -d --name my_container_1 -p 8085:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
+                        sh "docker run -d --name my_container_11 -p 8095:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
                     }
                 }
                 stage('Deploy to slave2') {
                     agent { label 'slave1' }
                     steps {
                         sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
-                        sh "docker run -d --name my_container_2 -p 8086:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
+                        sh "docker run -d --name my_container_22 -p 8088:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
                     }
                 }
             }
