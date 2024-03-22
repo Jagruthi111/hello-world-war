@@ -8,8 +8,8 @@ pipeline {
             steps {
 		sh 'git --version'
 		sh 'echo "checkout"'   
-                git 'https://github.com/Jagruthi111/hello-world-war.git'
-		  sh 'echo "checkout done"'
+        	sh 'git clone https://github.com/Jagruthi111/hello-world-war/'
+		sh 'echo "checkout done"'
             }
         }
 		
