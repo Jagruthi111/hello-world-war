@@ -1,10 +1,12 @@
-FROM maven:3.3-jdk-8 as mavenbuilder
-ARG DIR=/home/devops
-WORKDIR $DIR
+FROM maven:3.6.3-jdk-11 as mavenbuilder
+ARG TEST=/home/multibuild
+WORKDIR $TEST
 COPY . .
-RUN /usr/bin/mvn clean install
-RUN ls target/
-RUN which mvn
+
+RUN mvn clean package
+
 FROM tomcat:9.0
-ARG DIR=/home/devops/target
-COPY --from=mavenbuilder ${DIR}/hello-world-war-1.0.0.war /usr/local/tomcat/webapps/
+ARG TEST=/home/multibuild
+COPY --from=mavenbuilder ${TEST}/target/hello-world-war-1.0.1.war /usr/local/tomcat/webapps
+EXPOSE 8085
+CMD ["catalina.sh", "run"]
