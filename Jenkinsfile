@@ -8,7 +8,6 @@ pipeline {
             steps {
 		sh 'git --version'
 		sh 'echo "checkout"'   
-                sh 'rm -rf hello-world-war'
                 git 'https://github.com/Jagruthi111/hello-world-war.git'
 		  sh 'echo "checkout done"'
             }
