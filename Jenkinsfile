@@ -46,7 +46,7 @@ pipeline {
                     }
                 }
                 stage('Deploy to slave2') {
-                    agent { label 'slave' }
+                    agent { label 'slave1' }
                     steps {
                         sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
                         sh "docker run -d --name my_container_2 -p 8086:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
