@@ -8,6 +8,7 @@ pipeline {
             steps {
                 sh 'rm -rf hello-world-war'
                 sh 'https://github.com/Jagruthi111/hello-world-war.git'
+		  sh 'echo "checkout done"'
             }
         }
 		
