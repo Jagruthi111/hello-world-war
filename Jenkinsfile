@@ -1,59 +1,55 @@
 pipeline {
-    agent { label 'slave101' }
-
+    agent { label 'slave1' }
+    environment {     
+        DOCKERHUB_CREDENTIALS= credentials('docker-hub')     
+    }
     stages {
-        stage('checkout') {
+        stage('Checkout') {
             steps {
                 sh 'rm -rf hello-world-war'
-                sh 'git clone https://github.com/tarundanda147/hello-world-war/'
+                sh 'https://github.com/Jagruthi111/hello-world-war.git'
             }
         }
-        
-        stage('build') {
+		
+        stage('Build') {
             steps {
+                sh 'echo "inside build"'
                 dir("hello-world-war") {
-                    sh 'echo "inside build"'
-                    sh "docker build -t tomcat-war:${BUILD_NUMBER} ."
+                    sh 'echo "inside dir"'    
+                    sh 'docker build -t tomcat-file:${BUILD_NUMBER} .'
                 }
             }
         }
-        
-        stage('push') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: '9edb749c-52c9-40d2-9266-024789f72979', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    sh "docker tag tomcat-war:${BUILD_NUMBER} tarundevops147/tomcat:${BUILD_NUMBER}"
-                    sh "docker push tarundevops147/tomcat:${BUILD_NUMBER}"
-                }
-            }
+		
+        stage('Login to Docker Hub') {         
+            steps {                            
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'                 
+                echo 'Login Completed'                
+            }           
         }
         
-        stage('deploy') {
+        stage('Push Image to Docker Hub') {         
+            steps {  
+                sh "docker tag tomcat-file:${BUILD_NUMBER} jagruthi111/master-slave:${BUILD_NUMBER}"
+                sh "docker push jagruthi111/master-slave:${BUILD_NUMBER}"                 
+                echo 'Image pushing completed..'       
+            }           
+        }
+        
+        stage('Pull and Deploy') {
             parallel {
-                stage('deployQA') {
-                    agent { label 'slave102' }
+                stage('Deploy to node1') {
+                    agent any
                     steps {
-                        script {
-                            withCredentials([usernamePassword(credentialsId: '9edb749c-52c9-40d2-9266-024789f72979', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                                sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                                sh "docker pull tarundevops147/tomcat:${BUILD_NUMBER}"
-                                sh 'docker rm -f tomcat-qa || true'
-                                sh 'docker run -d -p 5555:8080 --name tomcat-qa tarundevops147/tomcat:${BUILD_NUMBER}'
-                            }
-                        }
+                        sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
+                        sh "docker run -d --name my_container_1 -p 8085:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
                     }
                 }
-                stage('deployProd') {
-                    agent { label 'slave33' }
+                stage('Deploy to slave2') {
+                    agent { label 'slave' }
                     steps {
-                        script {
-                            withCredentials([usernamePassword(credentialsId: '9edb749c-52c9-40d2-9266-024789f72979', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                                sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                                sh "docker pull tarundevops147/tomcat:${BUILD_NUMBER}"
-                                sh 'docker rm -f tomcat-prod || true'
-                                sh 'docker run -d -p 5555:8080 --name tomcat-prod tarundevops147/tomcat:${BUILD_NUMBER}'
-                            }
-                        }
+                        sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
+                        sh "docker run -d --name my_container_2 -p 8086:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
                     }
                 }
             }
