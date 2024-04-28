@@ -1,58 +1,47 @@
 pipeline {
-    agent { label 'slave1' }
-    environment {     
-        DOCKERHUB_CREDENTIALS= credentials('docker-hub')     
-    }
+    agent any
+
     stages {
-        stage('Checkout') {
+        stage('checkout') {
             steps {
-		sh 'git --version'
-		sh 'echo "checkout"'   
-        	sh 'git clone https://github.com/Jagruthi111/hello-world-war/'
-		sh 'echo "checkout done"'
+                sh 'rm -rf hello-world-war'
+                sh 'git clone -b k8s https://github.com/tarundanda147/hello-world-war.git'
             }
         }
-		
-        stage('Build') {
+        
+        stage('build') {
             steps {
-                sh 'echo "inside build"'
                 dir("hello-world-war") {
-                    sh 'echo "inside dir"'    
-                    sh 'docker build -t tomcat-file:${BUILD_NUMBER} .'
+                    sh 'echo "inside build"'
+                    sh "docker build -t tomcat-war:${BUILD_NUMBER} ."
                 }
             }
         }
-		
-        stage('Login to Docker Hub') {         
-            steps {                            
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'                 
-                echo 'Login Completed'                
-            }           
-        }
         
-        stage('Push Image to Docker Hub') {         
-            steps {  
-                sh "docker tag tomcat-file:${BUILD_NUMBER} jagruthi111/master-slave:${BUILD_NUMBER}"
-                sh "docker push jagruthi111/master-slave:${BUILD_NUMBER}"                 
-                echo 'Image pushing completed..'       
-            }           
-        }
-        
-        stage('Pull and Deploy') {
-            parallel {
-                stage('Deploy to node1') {
-                    agent { label 'slave1' }
-                    steps {
-                        sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
-                        sh "docker run -d --name my_container_11 -p 8095:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
-                    }
+        stage('push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: '773e6289-72b6-476b-9e54-19702f9fb5d3', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    sh "docker tag tomcat-war:${BUILD_NUMBER} tarundanda147/tomcat:${BUILD_NUMBER}"
+                    sh "docker push tarundanda147/tomcat:${BUILD_NUMBER}"
                 }
-                stage('Deploy to slave2') {
-                    agent { label 'slave1' }
-                    steps {
-                        sh "docker pull jagruthi111/master-slave:${BUILD_NUMBER}"
-                        sh "docker run -d --name my_container_22 -p 8088:8080 jagruthi111/master-slave:${BUILD_NUMBER}"
-                    }
+            }
+        }
+
+        stage('Helm Deploy') {
+            steps {
+                // Authenticate with AWS using IAM credentials stored in Jenkins
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: '03bb86f5-d824-42dd-b9c7-da3dc566f56c',
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    sh "aws eks --region us-east-1 update-kubeconfig --name eks-cluster"
+                    echo 'Deploying to Kubernetes using Helm'
+                    // Deploy Helm chart to Kubernetes cluster
+                    sh "helm upgrade first  /var/lib/jenkins/workspace/eks-docker/hello-world-war --namespace hello-world-war --set image.tag=$BUILD_NUMBER --dry-run"
+                    sh "helm upgrade first  /var/lib/jenkins/workspace/eks-docker/hello-world-war --namespace hello-world-war --set image.tag=$BUILD_NUMBER"
                 }
             }
         }
