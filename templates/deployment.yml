@@ -1,1 +1,37 @@
-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myreplica
+  labels:
+    app: {{ .Values.deploymentLabel }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: {{ .Values.deploymentLabel }}
+  template:
+    metadata:
+      name: {{ .Values.deploymentLabel }}
+      labels:
+        app: {{ .Values.deploymentLabel }}
+    spec:
+      containers:
+        - name: {{ .Values.deploymentLabel }}
+          image: {{ .Values.imageName }}:{{ .Values.image.tag }}
+      imagePullSecrets:
+        - name: regcred
+          env:
+            - name: TOMCAT_OPTS
+              value: --prefix=/tomcat
+          volumeMounts:
+            - name: {{ .Values.volumeName }}
+              mountPath: /usr/local/tomcat/webapps
+      volumes:
+        - name: {{ .Values.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.claimName }}
